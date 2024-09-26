@@ -1,0 +1,73 @@
+seed: 42
+
+# Models are instantiated using skrl's model instantiator utility
+# https://skrl.readthedocs.io/en/latest/api/utils/model_instantiators.html
+models:
+  separate: True
+  shared:
+    obs_type: "prop"
+    hiddens: [32,32]
+    hidden_activation: ["elu", "elu"]
+  policy:  # see skrl.utils.model_instantiators.torch.gaussian_model for parameter details
+    clip_actions: True
+    clip_log_std: True
+    initial_log_std: 0
+    min_log_std: -20.0
+    max_log_std: 2.0
+    input_shape: "Shape.STATES"
+    output_shape: "Shape.ACTIONS"
+    output_activation: "tanh"
+    output_scale: 1.0
+  value:  # see skrl.utils.model_instantiators.torch.deterministic_model for parameter details
+    clip_actions: False
+    input_shape: "Shape.STATES"
+    output_shape: "Shape.ONE"
+    output_activation: "identity"
+    output_scale: 1.0
+
+
+# PPO agent configuration (field names are from PPO_DEFAULT_CONFIG)
+# https://skrl.readthedocs.io/en/latest/api/agents/ppo.html
+agent:
+  rollouts: 8
+  learning_epochs: 16
+  mini_batches: 8
+  discount_factor: 0.99
+  lambda: 0.95
+  learning_rate: 1.e-4
+  random_timesteps: 0
+  learning_starts: 0
+  grad_norm_clip: 1.0
+  ratio_clip: 0.2
+  value_clip: 0.2
+  clip_predicted_values: True
+  entropy_loss_scale: 0.0
+  value_loss_scale: 2.0
+  kl_threshold: 0
+  rewards_shaper_scale: 0.01
+  # logging and checkpoint
+  experiment:
+    root_dir: "/media/storage/emil"
+    directory: "debug"
+    experiment_name: ""
+    write_interval: 16
+    checkpoint_interval: 80
+    wandb: True
+    wandb_kwargs: {
+      "project": "skrl_testing",
+      "group": "cartpole",
+      "name": "Cartpole"
+    }
+
+
+# Sequential trainer
+# https://skrl.readthedocs.io/en/latest/api/trainers/sequential.html
+trainer:
+  num_eval: 20
+  max_timesteps: 1000
+  environment_info: "log"
+
+logging:
+  write_image_to_file: False
+  img_dir: /workspace/isaaclab/IsaacLabExtension/images
+  video_dir: /workspace/isaaclab/IsaacLabExtension/videos
