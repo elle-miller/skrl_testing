@@ -56,7 +56,7 @@ agent:
     wandb_kwargs: {
       "project": "skrl_testing",
       "group": "cartpole",
-      "name": "Cartpole"
+      "name": "hard eval reset"
     }
 
 

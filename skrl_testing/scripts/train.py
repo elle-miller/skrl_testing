@@ -94,7 +94,7 @@ from skrl.resources.preprocessors.torch import RunningStandardScaler
 # from skrl.trainers.torch.sequential import SequentialTrainer
 
 import skrl_testing.tasks  # noqa: F401
-from skrl_testing.utils.skrl.skrl_wrapper import process_skrl_cfg
+from skrl_testing.utils.skrl.skrl_wrapper import process_skrl_cfg, SkrlVecEnvWrapper
 from skrl_testing.utils.skrl.sequential import SequentialTrainer
 from skrl_testing.utils.config import LOG_ROOT_DIR
 from skrl_testing.utils.skrl.ppo import PPO, PPO_DEFAULT_CONFIG
@@ -104,7 +104,6 @@ from skrl_testing.utils.skrl.ppo import PPO, PPO_DEFAULT_CONFIG
 from omni.isaac.lab.utils.dict import print_dict
 from omni.isaac.lab.utils.io import dump_pickle, dump_yaml
 from omni.isaac.lab_tasks.utils.hydra import hydra_task_config
-from omni.isaac.lab_tasks.utils.wrappers.skrl import SkrlVecEnvWrapper
 
 
 @hydra_task_config(args_cli.task, "skrl_cfg_entry_point")
@@ -155,6 +154,8 @@ def main(env_cfg, agent_cfg: dict):
 
     # wrap around environment for skrl
     env = SkrlVecEnvWrapper(env, ml_framework=args_cli.ml_framework)
+
+    print(env.observation_space)
 
     models = {}
     # non-shared models
@@ -242,12 +243,13 @@ def main(env_cfg, agent_cfg: dict):
         #     returns, images = trainer.eval(True)
         # else:
 
+        
         global_step = step * train_timesteps
 
-        returns, _ = trainer.eval()
+        returns, _ = trainer.eval(global_step)
+        mean_eval_returns = returns['returns'].mean().cpu()
 
-        # assuming agent is an instance of an Agent subclass
-        agent.writer.add_scalar("Eval / Returns", returns['returns'].mean().cpu(), global_step=global_step)
+        print(global_step, mean_eval_returns)
 
         trainer.train(train_timesteps)
 

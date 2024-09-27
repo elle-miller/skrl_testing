@@ -13,13 +13,14 @@ from omni.isaac.lab_assets.cartpole import CARTPOLE_CFG
 
 import omni.isaac.lab.sim as sim_utils
 from omni.isaac.lab.assets import Articulation, ArticulationCfg
-from omni.isaac.lab.envs import DirectRLEnv, DirectRLEnvCfg
+from omni.isaac.lab.envs import DirectRLEnvCfg #DirectRLEnv
 from omni.isaac.lab.scene import InteractiveSceneCfg
 from omni.isaac.lab.sim import SimulationCfg
 from omni.isaac.lab.sim.spawners.from_files import GroundPlaneCfg, spawn_ground_plane
 from omni.isaac.lab.utils import configclass
 from omni.isaac.lab.utils.math import sample_uniform
 
+from skrl_testing.utils.isaac.direct_rl import DirectRLEnv
 
 @configclass
 class CartpoleEnvCfg(DirectRLEnvCfg):
@@ -30,6 +31,11 @@ class CartpoleEnvCfg(DirectRLEnvCfg):
     num_actions = 1
     num_observations = 4
     num_states = 0
+
+    num_gt_observations = 4
+    obs_type = "gt"
+
+    seed = 42
 
     # simulation
     sim: SimulationCfg = SimulationCfg(dt=1 / 120, render_interval=decimation)
@@ -96,7 +102,7 @@ class CartpoleEnv(DirectRLEnv):
             ),
             dim=-1,
         )
-        observations = {"policy": obs}
+        observations = obs
         return observations
 
     def _get_rewards(self) -> torch.Tensor:
@@ -121,7 +127,8 @@ class CartpoleEnv(DirectRLEnv):
         time_out = self.episode_length_buf >= self.max_episode_length - 1
         out_of_bounds = torch.any(torch.abs(self.joint_pos[:, self._cart_dof_idx]) > self.cfg.max_cart_pos, dim=1)
         out_of_bounds = out_of_bounds | torch.any(torch.abs(self.joint_pos[:, self._pole_dof_idx]) > math.pi / 2, dim=1)
-        return out_of_bounds, time_out
+        termination = out_of_bounds
+        return termination, time_out
 
     def _reset_idx(self, env_ids: Sequence[int] | None):
         if env_ids is None:

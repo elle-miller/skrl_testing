@@ -95,6 +95,6 @@ def wrap_env(
     if wrapper == "isaaclab" or wrapper == "isaac-orbit":
         if verbose:
             logger.info("Environment wrapper: Isaac Lab")
-        return IsaacLabWrapper(env, obs_type)
+        return IsaacLabWrapper(env)
     else:
         raise ValueError(f"Unknown wrapper type: {wrapper}")

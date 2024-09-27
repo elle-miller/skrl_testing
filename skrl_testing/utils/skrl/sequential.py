@@ -260,7 +260,7 @@ class SequentialTrainer(Trainer):
             self.training_timestep += 1
 
 
-    def eval(self, record=False) -> None:
+    def eval(self, global_step, record=False) -> None:
         """Evaluate the agents sequentially
 
         This method executes the following steps in loop:
@@ -276,15 +276,17 @@ class SequentialTrainer(Trainer):
         assert self.num_simultaneous_agents == 1, "This method is not allowed for simultaneous agents"
         assert self.env.num_agents == 1, "This method is not allowed for multi-agents"
 
-       # Hard reset all environments
-        states, infos = self.env.reset() #hard=True)
+        # Hard reset all environments
+        states, infos = self.env.reset(hard=True)
 
         # TODO: integrate the actual total returns from the env
         infos = {'reach_reward': None, 'lift_reward': None, 'object_goal_tracking': None, 'action_rate': None,
-                 'joint_vel_penalty': None, 'reach_success': None, 'returns': None, 'returns_masked': None}
+                 'joint_vel_penalty': None, 'reach_success': None, 'returns': None, 'unmasked_returns': None}
 
         returns = {k: torch.zeros(size=(states.shape[0], 1), device=states.device) for k in infos.keys()}
         mask = torch.Tensor([[1] for _ in range(states.shape[0])]).to(states.device)
+
+        # compute termination and truncation masks 
         term_mask = torch.Tensor([[1] for _ in range(states.shape[0])]).to(states.device)
         trunc_mask = torch.Tensor([[1] for _ in range(states.shape[0])]).to(states.device)
         steps_to_term = torch.Tensor([[0] for _ in range(states.shape[0])]).to(states.device)
@@ -304,7 +306,7 @@ class SequentialTrainer(Trainer):
                 actions = self.agents.act(states, timestep=timestep, timesteps=ep_length, eval=True)[0]
 
                 # step the environments
-                next_states, rewards, truncated, terminated, infos = self.env.step(actions)
+                next_states, rewards, terminated, truncated, infos = self.env.step(actions)
                 
                 mask_update = 1 - torch.logical_or(terminated, truncated).float()
 
@@ -317,11 +319,15 @@ class SequentialTrainer(Trainer):
                     for k, v in infos['log'].items():
                         if k in returns:
                             returns[k] += v * mask
-                returns['returns'] += rewards #* mask
-                returns['returns_masked'] += rewards * mask
-                returns['steps_to_term'] += torch.ones_like(mask, device=mask.device) * term_mask
-                returns['steps_to_trunc'] += torch.ones_like(mask, device=mask.device) * trunc_mask
+
+                # compute returns
+                returns['unmasked_returns'] += rewards
+                returns['returns'] += rewards * mask
                 mask *= mask_update
+
+                # add 1 if no term/trunc has happened
+                returns['steps_to_term'] += term_mask
+                returns['steps_to_trunc'] += trunc_mask
                 term_mask *= (1 - terminated.float())
                 trunc_mask *= (1 - truncated.float())
                 
@@ -332,15 +338,21 @@ class SequentialTrainer(Trainer):
                 if not self.headless:
                     self.env.render()
                     
-            # reset environments
-            if terminated.any() or truncated.any():
-                with torch.no_grad():
-                    states, infos = self.env.reset()
-            else:
+            # do not need to reset environments because they will be masked out
+            # but doing so to not mess up skrl metrics
+            if self.env.num_envs > 1:
                 states = next_states
+            else:
+                if terminated.any() or truncated.any():
+                    with torch.no_grad():
+                        states, infos = self.env.reset()
+                else:
+                    states = next_states
 
-        returns['reached_timesteps'] = returns['reach_success']
-        returns['reach_success'] = (returns['reach_success'] > 1.0).float()
-        
+        self.agents.writer.add_scalar("Eval / Mean returns", returns['returns'].mean().cpu(), global_step=global_step)
+        self.agents.writer.add_scalar("Eval / Unmasked mean returns", returns['unmasked_returns'].mean().cpu(), global_step=global_step)
+        self.agents.writer.add_scalar("Eval / Mean steps to termination", returns['steps_to_term'].mean().cpu(), global_step=global_step)
+        self.agents.writer.add_scalar("Eval / Mean steps to time out", returns['steps_to_trunc'].mean().cpu(), global_step=global_step)
+
         return returns, images
      
