@@ -121,17 +121,7 @@ def custom_shared_model(
 
             self.obs_type = metadata[0]["obs_type"]
 
-            # print(observation_space)
             self.num_gt_observations = num_gt_observations
-
-            num_inputs, self.cnn = process_inputs(
-                self.obs_type,
-                frame_stack,
-                metadata[0]["latent_dim"],
-                metadata[0]["img_dim"],
-                num_inputs,
-                num_gt_observations,
-            )
 
             # shared layers/network
             self.net = nn.Sequential(nn.Linear(num_inputs, 32), nn.ELU(), nn.Linear(32, 32), nn.ELU()).to(device)
@@ -154,18 +144,6 @@ def custom_shared_model(
                 net_inputs = inputs["taken_actions"]
             elif self.instantiator_input_type == -2:
                 net_inputs = torch.cat((inputs["states"], inputs["taken_actions"]), dim=1)
-
-            if self.obs_type == "image":
-                # pass input first through cnn
-                net_inputs = self.cnn(net_inputs)
-
-            elif self.obs_type == "concat":
-                # pass input first through cnn
-                prop_obs = net_inputs[:, : self.num_gt_observations]
-                img_obs = net_inputs[:, self.num_gt_observations :]
-                z = self.cnn(img_obs)
-                net_inputs = torch.cat((prop_obs, z), dim=1)
-
 
             # single shared layers/network forward-pass
             if self._single_forward_pass:
@@ -196,25 +174,6 @@ def custom_shared_model(
         frame_stack=frame_stack,
         num_gt_observations=num_gt_observations,
     )
-
-
-def process_inputs(obs_type, frame_stack, latent_dim, img_dim, num_inputs, num_gt_observations, num_prop_observations, num_layers, downsample):
-
-    # create cnn if image included
-    if obs_type == "image" or obs_type == "image_prop":
-        obs_dim = (frame_stack * 3, img_dim, img_dim)
-        cnn = ImageEncoder(
-            obs_dim, img_dim, frame_stack, feature_dim=latent_dim, num_layers=num_layers, downsample=downsample
-        )
-    else:
-        cnn = None
-
-    if obs_type == "image":
-        num_inputs = latent_dim
-    elif obs_type == "image_prop":
-        num_inputs = latent_dim + num_prop_observations
-
-    return num_inputs, cnn
 
 
 def custom_gaussian_model(
