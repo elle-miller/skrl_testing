@@ -205,6 +205,8 @@ class SequentialTrainer(Trainer):
         # frequency.
         self.agents.memory.reset()
         self.agents._rollout = 0
+        # self.agents._cumulative_rewards = None
+        # self.agents._cumulative_timesteps = None
 
         train_start = self.training_timestep
         train_pause = self.training_timestep + train_timesteps

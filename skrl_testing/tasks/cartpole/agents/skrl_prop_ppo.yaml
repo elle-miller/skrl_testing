@@ -56,14 +56,14 @@ agent:
     wandb_kwargs: {
       "project": "skrl_testing",
       "group": "cartpole",
-      "name": "hard eval reset"
+      "name": "reset reward buff"
     }
 
 
 # Sequential trainer
 # https://skrl.readthedocs.io/en/latest/api/trainers/sequential.html
 trainer:
-  num_eval: 20
+  num_eval: 10
   max_timesteps: 1000
   environment_info: "log"
 
