@@ -31,16 +31,9 @@ cd IsaacLab
 ./isaaclab.sh --install
 python source/standalone/workflows/skrl/train.py --task Isaac-Reach-Franka-v0 --headless
 ```
-Install `multimodal_gym` extension as editable package. Test if working.
+Install `skrl_testing` extension as editable package. Test if working.
 ```
-git clone git@github.com:elle-miller/IsaacLabExtension.git
-cd IsaacLabExtension/exts/multimodal_gym
+git clone git@github.com:elle-miller/skrl_testing.git
+cd skrl_testing/exts/skrl_testing
 python -m pip install -e .
-cd ../..
-python scripts/skrl/train.py --task FrankaLift --headless
-```
-Now, to customise where logs/videos/images/checkpoints are saved, update the following directories
-```
-# train.py
-LOG_ROOT_DIR = x
 ```
